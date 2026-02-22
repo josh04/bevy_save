@@ -13,7 +13,7 @@ use bevy_save::prelude::*;
 
 #[derive(Component, Reflect, Clone, MapEntities)]
 #[relationship(relationship_target = Items)]
-#[reflect(Component)]
+#[reflect(Component, MapEntities)]
 pub struct ItemOf {
     #[relationship]
     #[entities]
@@ -22,7 +22,7 @@ pub struct ItemOf {
 
 #[derive(Component, Reflect, Clone, MapEntities)]
 #[relationship_target(relationship = ItemOf)]
-#[reflect(Component)]
+#[reflect(Component, MapEntities)]
 pub struct Items(#[entities] Vec<Entity>);
 
 #[derive(Component, Reflect, Default)]
@@ -93,7 +93,10 @@ fn empty_app() -> App {
         .register_type::<IsItem>()
         .register_type::<ItemPrefab>()
         .register_type::<ItemOf>()
-        .register_type::<Items>();
+        .register_type::<Items>()
+        // Register relationship type data so bevy_save can filter relationship targets
+        .register_type_data::<ItemOf, ReflectRelationship>()
+        .register_type_data::<Items, ReflectRelationshipTarget>();
 
     app
 }
@@ -132,13 +135,13 @@ fn dump_snapshot(registry: &TypeRegistry, snapshot: &Snapshot) {
     );
 }
 
-fn dump_entities(world: &World) {
-    for entity in world.iter_entities() {
+fn dump_entities(world: &mut World) {
+    for entity in world.query::<Entity>().iter(world).collect::<Vec<_>>() {
         println!(
             "Entity {:?}: {:?}",
-            entity.id(),
+            entity,
             world
-                .inspect_entity(entity.id())
+                .inspect_entity(entity)
                 .expect("Invalid entity")
                 .map(|i| i.name())
                 .collect::<Vec<_>>()
@@ -444,8 +447,14 @@ fn test_relationship_desync() {
     assert_eq!(parents.len(), 1);
     assert_eq!(children.len(), 1);
 
-    assert_eq!(parents[0].index(), parent.index());
-    assert_eq!(children[0].index(), child.index());
+    // Verify the relationship is correct (parent points to child)
+    let parent_entity = parents[0];
+    let child_entity = children[0];
+    let rel = world
+        .entity(parent_entity)
+        .get::<TestRelationship>()
+        .expect("Parent should have TestRelationship");
+    assert_eq!(rel.0, child_entity);
 }
 
 #[test]

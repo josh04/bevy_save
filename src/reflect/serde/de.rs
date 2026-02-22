@@ -423,9 +423,13 @@ impl<'a, 'de> DeserializeSeed<'de> for TypeRegistrationDeserializer<'a> {
                     let version = semver::Version::from_str(version)
                         .map_err(|_| Error::custom(format_args!("invalid version `{version}`")))?;
 
+                    // In Bevy 0.18+, automatic type registration may register types
+                    // with matching type paths that don't have ReflectMigrate. We need
+                    // to ensure we find the registration that actually has migration data.
                     let output = self
                         .0
                         .get_with_type_path(type_path)
+                        .filter(|r| r.data::<ReflectMigrate>().is_some())
                         .or_else(|| {
                             self.0
                                 .iter_with_data::<ReflectMigrate>()

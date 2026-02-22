@@ -13,6 +13,7 @@ mod brotli {
     ///
     /// # Example
     /// ```rust
+    /// # use bevy::prelude::*;
     /// # use bevy_save::prelude::*;
     /// struct MyPipeline;
     ///
@@ -24,6 +25,14 @@ mod brotli {
     ///
     ///     fn key(&self) -> Self::Key<'_> {
     ///         "my_pipeline"
+    ///     }
+    ///
+    ///     fn capture(&self, builder: BuilderRef) -> Snapshot {
+    ///         builder.extract_all().build()
+    ///     }
+    ///
+    ///     fn apply(&self, world: &mut World, snapshot: &Snapshot) -> Result<(), bevy_save::Error> {
+    ///         snapshot.applier(world).apply()
     ///     }
     /// }
     pub struct Brotli<F>(PhantomData<F>);

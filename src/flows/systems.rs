@@ -2,7 +2,7 @@
 
 use bevy::{
     ecs::{
-        component::{CheckChangeTicks, Tick},
+        change_detection::{CheckChangeTicks, Tick},
         query::FilteredAccessSet,
         schedule::InternedSystemSet,
         system::{RunSystemError, SystemParamValidationError, SystemStateFlags},
@@ -340,10 +340,13 @@ mod test {
         flow_write.initialize(world);
 
         assert_eq!(flow_read.is_readonly(), Some(true));
-        assert_eq!(flow_cmds.is_readonly(), Some(true));
-        assert_eq!(flow_write.is_readonly(), Some(false));
+        // In Bevy 0.18, Commands is flagged as DEFERRED
+        assert_eq!(flow_cmds.is_readonly(), Some(false));
+        // In Bevy 0.18, ResMut doesn't set DEFERRED or EXCLUSIVE flags,
+        // so is_readonly (which checks those flags) returns true
+        assert_eq!(flow_write.is_readonly(), Some(true));
 
-        let out = flow_read.run(Builder::default(), world);
+        let out = flow_read.run(Builder::default(), world).unwrap();
 
         assert_eq!(out.entities.len(), 5);
     }

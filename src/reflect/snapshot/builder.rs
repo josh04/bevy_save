@@ -80,6 +80,16 @@ impl Builder {
     }
 }
 
+/// Iterate all entity refs from an immutable World reference.
+/// Replacement for the removed `World::iter_entities()`.
+fn iter_entity_refs(world: &World) -> impl Iterator<Item = EntityRef> + '_ {
+    world
+        .archetypes()
+        .iter()
+        .flat_map(|archetype| archetype.entities().iter().map(|e| e.id()))
+        .filter_map(move |id| world.get_entity(id).ok())
+}
+
 /// A snapshot builder that can extract entities and resources from a [`World`].
 pub struct BuilderRef<'a> {
     world: &'a World,
@@ -327,21 +337,15 @@ impl BuilderRef<'_> {
 
     /// Extract the entities matching the given filter from the builder's [`World`].
     #[must_use]
-    #[allow(deprecated)]
     pub fn extract_entities_matching(self, filter: impl Fn(&EntityRef) -> bool) -> Self {
-        // iter_entities is deprecated in Bevy 0.17 but world.query() requires &mut World
-        // which we don't have in BuilderRef. Using allow(deprecated) for now.
-        let entities = self.world.iter_entities().filter(filter).map(|ee| ee.id());
+        let entities = iter_entity_refs(self.world).filter(filter).map(|ee| ee.id());
         self.extract_entities(entities)
     }
 
     /// Extract all entities from the builder's [`World`].
     #[must_use]
-    #[allow(deprecated)]
     pub fn extract_all_entities(self) -> Self {
-        // iter_entities is deprecated in Bevy 0.17 but world.query() requires &mut World
-        // which we don't have in BuilderRef. Using allow(deprecated) for now.
-        let entities = self.world.iter_entities().map(|ee| ee.id());
+        let entities = iter_entity_refs(self.world).map(|ee| ee.id());
         self.extract_entities(entities)
     }
 
@@ -349,14 +353,11 @@ impl BuilderRef<'_> {
     ///
     /// This will bypass all filters.
     #[must_use]
-    #[allow(deprecated)]
     pub fn extract_entities_manual(
         mut self,
         func: impl Fn(&EntityRef) -> Option<Vec<Box<dyn PartialReflect>>>,
     ) -> Self {
-        // iter_entities is deprecated in Bevy 0.17 but world.query() requires &mut World
-        // which we don't have in BuilderRef. Using allow(deprecated) for now.
-        for entity in self.world.iter_entities() {
+        for entity in iter_entity_refs(self.world) {
             let Some(components) = func(&entity) else {
                 continue;
             };
@@ -372,14 +373,11 @@ impl BuilderRef<'_> {
 
     /// Extract all [`Prefab`] entities with a custom extraction function.
     #[must_use]
-    #[allow(deprecated)]
     pub fn extract_prefab<P>(mut self, func: impl Fn(&EntityRef) -> Option<P>) -> Self
     where
         P: Prefab + PartialReflect,
     {
-        // iter_entities is deprecated in Bevy 0.17 but world.query() requires &mut World
-        // which we don't have in BuilderRef. Using allow(deprecated) for now.
-        for entity in self.world.iter_entities() {
+        for entity in iter_entity_refs(self.world) {
             if !entity.contains::<P::Marker>() {
                 continue;
             }

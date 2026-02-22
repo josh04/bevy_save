@@ -2,7 +2,6 @@ use std::any::TypeId;
 
 use bevy::{
     ecs::{
-        component::ComponentCloneBehavior,
         entity::{
             EntityHashMap,
             SceneEntityMapper,
@@ -221,8 +220,11 @@ impl EntityMapper for MapEntitiesMapper<'_, '_> {
 impl Drop for MapEntitiesMapper<'_, '_> {
     fn drop(&mut self) {
         // WORKAROUND: We've already mapped, don't do it again.
+        // Only insert identity mappings for mapped entities that aren't
+        // already keys (to avoid overwriting old→new mappings when old
+        // and new entity bits overlap, which occurs in Bevy 0.18+).
         for mapped in self.map.values().copied().collect::<Vec<_>>() {
-            self.map.insert(mapped, mapped);
+            self.map.entry(mapped).or_insert(mapped);
         }
     }
 }
@@ -317,50 +319,43 @@ impl ApplierRef<'_, '_> {
                     }
                 })?;
 
-                {
-                    let component_id = reflect.register_component(self.world);
-                    // SAFETY: we registered the component above. the info exists
-                    let component_info =
-                        unsafe { self.world.components().get_info_unchecked(component_id) };
-                    // ComponentCloneBehavior doesn't implement PartialEq in Bevy 0.17,
-                    // so we use matches! macro instead
-                    if matches!(component_info.clone_behavior(), ComponentCloneBehavior::Ignore) {
-                        continue;
-                    }
-                }
+                // Note: We intentionally do NOT skip components with
+                // ComponentCloneBehavior::Ignore here. In Bevy 0.18, relationship
+                // source components (e.g. ChildOf, ItemOf) have Ignore clone behavior,
+                // but we still need to restore them during snapshot application.
 
-                let mut cloned = None;
+                if let Some(map_entities) = registration.data::<ReflectMapEntities>() {
+                    // Path for types that register ReflectMapEntities (the MapEntities trait).
+                    // Manually map entities in a clone, then insert directly.
+                    // We must NOT also use apply_or_insert_mapped here because
+                    // Component::map_entities would double-map when old/new entity
+                    // bits overlap (which happens in Bevy 0.18+).
+                    let mut mapped = clone_reflect_value(&**component, registry);
 
-                // If this component references entities in the scene, update
-                // them to the entities in the world.
-                let component = registration
-                    .data::<ReflectMapEntities>()
-                    .and_then(|map_entities| {
-                        cloned = Some(clone_reflect_value(&**component, registry));
-
-                        map_entities.map_entities(
-                            cloned.as_deref_mut()?,
-                            &mut MapEntitiesMapper::new(entity_map, self.world),
-                        );
-
-                        cloned.as_deref()
-                    })
-                    .unwrap_or(&**component);
-
-                SceneEntityMapper::world_scope(entity_map, self.world, |world, mapper| {
-                    let entity_mut = &mut world.entity_mut(entity);
-
-                    // WORKAROUND: apply_or_insert doesn't actually apply
-                    reflect.remove(entity_mut);
-
-                    reflect.apply_or_insert_mapped(
-                        entity_mut,
-                        component,
-                        registry,
-                        mapper,
-                        RelationshipHookMode::Run,
+                    map_entities.map_entities(
+                        &mut *mapped,
+                        &mut MapEntitiesMapper::new(entity_map, self.world),
                     );
-                });
+
+                    let entity_mut = &mut self.world.entity_mut(entity);
+                    reflect.remove(entity_mut);
+                    reflect.insert(entity_mut, &*mapped, registry);
+                } else {
+                    // Path for types that use Component::map_entities (derived from
+                    // #[entities] field annotations). SceneEntityMapper handles
+                    // entity mapping during insertion.
+                    SceneEntityMapper::world_scope(entity_map, self.world, |world, mapper| {
+                        let entity_mut = &mut world.entity_mut(entity);
+                        reflect.remove(entity_mut);
+                        reflect.apply_or_insert_mapped(
+                            entity_mut,
+                            &**component,
+                            registry,
+                            mapper,
+                            RelationshipHookMode::Run,
+                        );
+                    });
+                }
             }
         }
 

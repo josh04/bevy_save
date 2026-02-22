@@ -1,18 +1,18 @@
 [package]
 name = "bevy_save_macros"
-version.workspace = true
-edition.workspace = true
-description.workspace = true
-license.workspace = true
-readme.workspace = true
-repository.workspace = true
-rust-version.workspace = true
+version = "3.0.0+4"
+edition = "2024"
+description = "A framework for saving and loading application state in Bevy."
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/hankjordan/bevy_save"
+rust-version = "1.85.0"
 
 [lib]
 proc-macro = true
 
 [dependencies]
-bevy_macro_utils.workspace = true
+bevy_macro_utils = "0.18"
 syn = "2.0"
 quote = "1.0"
 proc-macro2 = "1.0"
