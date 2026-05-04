@@ -6,7 +6,7 @@ description = "A framework for saving and loading application state in Bevy."
 license = "MIT OR Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/hankjordan/bevy_save"
-rust-version = "1.85.0"
+rust-version = "1.95.0"
 
 [package.metadata.docs.rs]
 rustdoc-args = ["-Zunstable-options", "--generate-link-to-definition"]
