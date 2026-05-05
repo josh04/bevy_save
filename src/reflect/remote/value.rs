@@ -149,11 +149,11 @@ impl PartialReflect for DynamicValue {
         self.0.try_apply(value)
     }
 
-    fn reflect_ref(&self) -> bevy::reflect::ReflectRef {
+    fn reflect_ref(&self) -> bevy::reflect::ReflectRef<'_> {
         self.0.reflect_ref()
     }
 
-    fn reflect_mut(&mut self) -> bevy::reflect::ReflectMut {
+    fn reflect_mut(&mut self) -> bevy::reflect::ReflectMut<'_> {
         self.0.reflect_mut()
     }
 

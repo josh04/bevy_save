@@ -82,7 +82,7 @@ impl Builder {
 
 /// Iterate all entity refs from an immutable World reference.
 /// Replacement for the removed `World::iter_entities()`.
-fn iter_entity_refs(world: &World) -> impl Iterator<Item = EntityRef> + '_ {
+fn iter_entity_refs(world: &World) -> impl Iterator<Item = EntityRef<'_>> + '_ {
     world
         .archetypes()
         .iter()

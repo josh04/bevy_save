@@ -72,7 +72,7 @@ impl Snapshot {
     ///     // Build the `Snapshot`
     ///     .build();
     /// ```
-    pub fn builder(world: &World) -> BuilderRef {
+    pub fn builder(world: &World) -> BuilderRef<'_> {
         BuilderRef::new(world)
     }
 }

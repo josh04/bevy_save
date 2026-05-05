@@ -45,11 +45,11 @@ impl<P: Prefab + Send + 'static> Command for SpawnPrefabCommand<P> {
 /// Extension trait that adds prefab-related methods to Bevy's [`Commands`].
 pub trait CommandsPrefabExt {
     /// Spawn a [`Prefab`] entity.
-    fn spawn_prefab<P: Prefab + Send + 'static>(&mut self, prefab: P) -> EntityCommands;
+    fn spawn_prefab<P: Prefab + Send + 'static>(&mut self, prefab: P) -> EntityCommands<'_>;
 }
 
 impl CommandsPrefabExt for Commands<'_, '_> {
-    fn spawn_prefab<P: Prefab + Send + 'static>(&mut self, prefab: P) -> EntityCommands {
+    fn spawn_prefab<P: Prefab + Send + 'static>(&mut self, prefab: P) -> EntityCommands<'_> {
         let target = self.spawn(P::Marker::default()).id();
         self.queue(SpawnPrefabCommand::new(target, prefab));
         self.entity(target)
